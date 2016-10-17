@@ -12,6 +12,12 @@ To clone this repo accompany with submodules, try:
 git clone --recursive https://github.com/d0u9/general-system-info
 ```
 
+Also, after cloning repo without `--recursive` option, users can manually execute below command to pull the neweset submodule automatically.
+
+```
+git submodule update --init
+```
+
 ---
 
 # License
