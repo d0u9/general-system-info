@@ -28,7 +28,7 @@ struct cpu_stat {
 
 struct core_struct {
 	struct list_head list;
-	unsigned int index;
+	unsigned long index;
 	struct cpu_struct *p_cpu;
 	/* current frequency of the core, KHZ */
 	u32 freq;
@@ -37,21 +37,22 @@ struct core_struct {
 
 struct cpu_info {
 	char vendor_id[VENDOR_ID_STR_MAX];
-	unsigned int cpu_family;
-	unsigned int model;
+	unsigned long cpu_family;
+	unsigned long model;
 	char model_name[MODEL_NAME_STR_MAX];
 	u32 bogomips;
 };
 
 struct cpu_struct {
 	struct cpu_info	cpu_info;
-	unsigned int core_num;
+	unsigned long core_num;
 	struct list_head cores;
 };
 
 struct cpu_head {
-	unsigned int total_cpus;
-	unsigned int total_cores;
+	unsigned long total_sockets;
+	unsigned long total_cores;
+	unsigned long total_threads;
 	struct list_head cpus;
 	struct list_head cores;
 };
