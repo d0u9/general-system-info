@@ -28,7 +28,7 @@ $(BIN): $(OBJS)
 	$(CC) $(CFLAGS) $(DEBUG_FLAGS) -o $(BIN) $^
 
 $(BUILD_DIR)/%.o: %.c
-	$(CC) $(CFLAGS) $(DEBUG_FLAGS) -MMD -c -o $@ $<
+	$(CC) $(CFLAGS) $(DEBUG_FLAGS) -fPIC -MMD -c -o $@ $<
 
 $(OBJS): | $(BUILD_DIR)
 
