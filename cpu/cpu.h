@@ -5,10 +5,12 @@
 #include "../trilib/core.h"
 #include "../trilib/list.h"
 
+#define POSSIBLE_CPU_NUM_MAX	256
 #define VENDOR_ID_STR_MAX	128
 #define MODEL_NAME_STR_MAX	128
+#define CACHE_SIZE_STR_MAX	64
 
-struct cpu_stat {
+struct core_stat {
 	u64 user;
 	u64 nice;
 	u64 system;
@@ -26,13 +28,13 @@ struct cpu_stat {
 	u64 load;
 };
 
-struct core_struct {
+struct core_desc {
 	struct list_head list;
 	unsigned long index;
 	struct cpu_struct *p_cpu;
 	/* current frequency of the core, KHZ */
 	u32 freq;
-	struct cpu_stat stat;
+	struct core_stat stat;
 };
 
 struct cpu_info {
@@ -43,13 +45,13 @@ struct cpu_info {
 	u32 bogomips;
 };
 
-struct cpu_struct {
+struct cpu_desc {
 	struct cpu_info	cpu_info;
 	unsigned long core_num;
 	struct list_head cores;
 };
 
-struct cpu_head {
+struct cpus {
 	unsigned long total_sockets;
 	unsigned long total_cores;
 	unsigned long total_threads;
@@ -57,6 +59,8 @@ struct cpu_head {
 	struct list_head cores;
 };
 
-extern struct cpu_head *cpu_init(void);
+extern struct cpus *cpu_init(void);
+extern void cpu_exit(struct cpus *cpu_root);
+extern void cpu_update(struct cpus *cpu_root);
 
 #endif
