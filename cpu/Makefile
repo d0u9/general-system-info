@@ -1,15 +1,15 @@
 CC := gcc
 BIN := cpu.out
 
-CFLAGS += -Wall -std=gnu99 -I../trilib
+CFLAGS += -Wall -std=gnu99 -I../trilib -I..
 BUILD_DIR := build
 
-SRCS := $(wildcard *.c) $(wildcard sample/*.c) $(wildcard ../trilib/*.c)
+SRCS := $(wildcard *.c) $(wildcard sample/*.c) $(wildcard ../trilib/*.c) $(wildcard ../*.c)
 OBJS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(notdir $(SRCS)))
 DEPS := $(patsubst %.o, %.d, $(OBJS))
 
-vpath %.c sample:../trilib
-vpath %.h sample:../trilib
+vpath %.c sample:../trilib:..
+vpath %.h sample:../trilib:..
 
 .PHONY: release
 release: DEBUG_FLAGS = -O2

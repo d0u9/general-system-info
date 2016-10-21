@@ -4,8 +4,11 @@
 #include <linux/version.h>
 #include "../trilib/core.h"
 #include "../trilib/list.h"
+#include "../trilib/bitmap.h"
 
-#define POSSIBLE_CPU_NUM_MAX	256
+#define CPUS_NUM_MAX		32
+#define CORES_NUM_PER_CPU	32
+#define CORES_NUM_MAX		(CPUS_NUM_MAX * CORES_NUM_PER_CPU)
 #define VENDOR_ID_STR_MAX	128
 #define MODEL_NAME_STR_MAX	128
 #define CACHE_SIZE_STR_MAX	64
@@ -30,8 +33,10 @@ struct core_stat {
 
 struct core_desc {
 	struct list_head list;
-	unsigned long index;
-	struct cpu_struct *p_cpu;
+	struct list_head sibling_list;
+	unsigned long processor_index;
+	unsigned long core_index;
+	struct cpu_desc *p_cpu;
 	/* current frequency of the core, KHZ */
 	u32 freq;
 	struct core_stat stat;
@@ -43,11 +48,14 @@ struct cpu_info {
 	unsigned long model;
 	char model_name[MODEL_NAME_STR_MAX];
 	u32 bogomips;
+	u32 stepping;
+	char cache_size[CACHE_SIZE_STR_MAX];
 };
 
 struct cpu_desc {
 	struct cpu_info	cpu_info;
 	unsigned long core_num;
+	unsigned long thread_num;
 	struct list_head cores;
 };
 
@@ -55,7 +63,9 @@ struct cpus {
 	unsigned long total_sockets;
 	unsigned long total_cores;
 	unsigned long total_threads;
-	struct list_head cpus;
+	unsigned long cpu_bitmap[BITS_TO_LONGS(CPUS_NUM_MAX)];
+	struct cpu_desc *cpus[CPUS_NUM_MAX];
+	unsigned long core_bitmap[BITS_TO_LONGS(CORES_NUM_MAX)];
 	struct list_head cores;
 };
 
