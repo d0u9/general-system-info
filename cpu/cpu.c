@@ -3,10 +3,10 @@
 #include <string.h>
 #include <assert.h>
 
-#include "../trilib/log.h"
-#include "../utils.h"
-#include "../trilib/bitmap.h"
-#include "cpu.h"
+#include <trilib/log.h>
+#include <utils.h>
+#include <trilib/bitmap.h>
+#include <cpu.h>
 
 #define FILE_PROC_STAT		"/proc/stat"
 #define FILE_PROC_CPUINFO	"/proc/cpuinfo"
@@ -45,6 +45,7 @@ static struct core_desc *find_core(struct list_head *head, unsigned long index)
 		if (core->processor_index == index)
 			return core;
 	}
+	printl_notice("can't find core %d\n", index);
 	return NULL;
 }
 
@@ -106,8 +107,15 @@ static void pre_update_cpu_from_cpuinfo(struct cpus *cpu_root,
 	}
 
 	core->p_cpu = cpu;
+
+	cpu_root->total_cores++;
+	if (!test_bit(cpu_index, cpu_root->cpu_bitmap)) {
+		cpu_root->total_sockets++;
+	}
+
 	set_bit(core_index, cpu_root->core_bitmap);
 	set_bit(cpu_index, cpu_root->cpu_bitmap);
+
 
 	update_cpu_from_cpuinfo(cpu, raw_coreinfo);
 	update_core_from_cpuinfo(core, raw_coreinfo);
@@ -156,13 +164,23 @@ static void update_raw_coreinfo(struct raw_core_info *raw_coreinfo,
 
 static void shrink_cpu_array(struct cpus *cpu_root)
 {
-	//TODO: here
-
+	unsigned long idx;
+	for_each_clear_bit(idx, cpu_root->cpu_bitmap, CPUS_NUM_MAX) {
+		cpu_root->cpus[idx] = NULL;
+	}
 }
 
 static void shrink_core_list(struct cpus *cpu_root)
 {
-	//TODO: here
+	struct list_head *head = &cpu_root->cores;
+	struct core_desc *core = list_entry(head->next, struct core_desc, list);
+	struct core_desc *tmp = NULL;
+	list_for_each_entry_safe_from(core, tmp, head, list) {
+		if (!test_bit(core->processor_index, cpu_root->core_bitmap)) {
+			list_del(&core->list);;
+			free(core);
+		}
+	}
 }
 
 static int parse_proc_cpuinfo(struct cpus *cpu_root,
@@ -264,10 +282,17 @@ void cpu_update(struct cpus *cpu_root)
 	bitmap_copy(old_core_bitmap, cpu_root->core_bitmap, CORES_NUM_MAX);
 	bitmap_zero(cpu_root->core_bitmap, CORES_NUM_MAX);
 	bitmap_zero(cpu_root->cpu_bitmap, CPUS_NUM_MAX);
+
+	cpu_root->total_cores = 0;
+	cpu_root->total_sockets = 0;
+
 	update_sys_files(cpu_sys_files);
 	parse_proc_cpuinfo(cpu_root, cpu_sys_files, old_core_bitmap);
 	shrink_cpu_array(cpu_root);
 	shrink_core_list(cpu_root);
+
+	printl_info("cpu num = %d, core num = %d\n",
+		    cpu_root->total_sockets, cpu_root->total_cores);
 }
 
 static void free_cpu_sys_file_fps(struct cpu_sys_file_fps *cpu_sys_files)

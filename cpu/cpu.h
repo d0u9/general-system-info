@@ -2,9 +2,9 @@
 #define _TRI_CPU_H
 
 #include <linux/version.h>
-#include "../trilib/core.h"
-#include "../trilib/list.h"
-#include "../trilib/bitmap.h"
+#include <trilib/core.h>
+#include <trilib/list.h>
+#include <trilib/bitmap.h>
 
 #define CPUS_NUM_MAX		32
 #define CORES_NUM_PER_CPU	32
@@ -62,7 +62,6 @@ struct cpu_desc {
 struct cpus {
 	unsigned long total_sockets;
 	unsigned long total_cores;
-	unsigned long total_threads;
 	unsigned long cpu_bitmap[BITS_TO_LONGS(CPUS_NUM_MAX)];
 	struct cpu_desc *cpus[CPUS_NUM_MAX];
 	unsigned long core_bitmap[BITS_TO_LONGS(CORES_NUM_MAX)];
