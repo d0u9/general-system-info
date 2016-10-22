@@ -1,7 +1,7 @@
 CC := gcc
 BIN := cpu.out
 
-CFLAGS += -Wall -std=gnu99 -I../trilib -I..
+CFLAGS += -Wall -std=gnu99 -I.. -I.
 BUILD_DIR := build
 
 SRCS := $(wildcard *.c) $(wildcard sample/*.c) $(wildcard ../trilib/*.c) $(wildcard ../*.c)
