@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <inttypes.h>
 
 #include <trilib/log.h>
 #include <utils.h>
@@ -183,7 +184,7 @@ static void shrink_core_list(struct cpus *cpu_root)
 	}
 }
 
-static int parse_proc_cpuinfo(struct cpus *cpu_root,
+static void parse_proc_cpuinfo(struct cpus *cpu_root,
 			      struct cpu_sys_file_fps *cpu_sys_files,
 			      unsigned long *old_core_bitmap)
 {
@@ -205,8 +206,6 @@ static int parse_proc_cpuinfo(struct cpus *cpu_root,
 	}
 
 	free(buf);
-
-	return 0;
 }
 
 static int open_sys_files(struct cpu_sys_file_fps *cpu_sys_files)
@@ -276,6 +275,69 @@ struct cpus *cpu_init(void)
 	return cpu_root;
 }
 
+static inline void write_cpu_stat(struct core_stat *stat, const char *val)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,33)
+	sscanf(val, "%"SCNu64" %"SCNu64" %"SCNu64" %"SCNu64" %"SCNu64" "
+		    "%"SCNu64" %"SCNu64" %"SCNu64" %"SCNu64" %"SCNu64,
+		    &stat->user, &stat->nice, &stat->system, &stat->idle,
+		    &stat->iowait, &stat->irq, &stat->softirq,
+		    &stat->steal, &stat->guest, &stat->guest_nice);
+	stat->used = stat->user + stat->nice + stat->system + stat->irq
+		     + stat->softirq + stat->guest + stat->guest_nice;
+	stat->total = stat->used + stat->idle + stat->iowait + stat->steal;
+#else
+	sscanf(val, "%"SCNu64" %"SCNu64" %"SCNu64" %"SCNu64" %"SCNu64" "
+		    "%"SCNu64" %"SCNu64,
+		    &stat->user, &stat->nice, &stat->system, &stat->idle,
+		    &stat->iowait, &stat->irq, &stat->softirq);
+	stat->used = stat->user + stat->nice + stat->system + stat->irq
+		     + stat->softirq;
+	stat->total = stat->used + stat->idle + stat->iowait;
+#endif
+}
+
+static void update_core_stat(struct cpus *cpu_root,
+			     const char *key, const char *val)
+{
+	struct core_desc *core = NULL;
+	unsigned long core_idx = stoul(key + 3);
+
+	if (*(key + 3) == '\0') {
+		write_cpu_stat(&cpu_root->stat, val);
+		return;
+	}
+
+	core = find_core(&cpu_root->cores, core_idx);
+	write_cpu_stat(&core->stat, val);
+}
+
+static void pre_update_cpu_from_cpustat(struct cpus *cpu_root,
+					const char *key, const char *val)
+{
+	if        (strncmp("cpu", key, strlen("cpu")) == 0) {
+		update_core_stat(cpu_root, key, val);
+	}
+}
+
+static void parse_proc_stat(struct cpus *cpu_root,
+			    struct cpu_sys_file_fps *cpu_sys_files)
+{
+	char *buf = NULL;
+	size_t len = 128;
+	ssize_t read_len;
+
+	while ((read_len = getline(&buf ,&len, cpu_sys_files->proc_stat)) != -1) {
+		char *val = split_to_key_val(' ', buf, read_len + 1);
+		char *key = trim_whitespaces(buf, read_len);
+		val = trim_whitespaces(val, read_len);
+
+		pre_update_cpu_from_cpustat(cpu_root, key, val);
+	}
+
+	free(buf);
+}
+
 void cpu_update(struct cpus *cpu_root)
 {
 	DECLARE_BITMAP(old_core_bitmap, CORES_NUM_MAX);
@@ -288,6 +350,7 @@ void cpu_update(struct cpus *cpu_root)
 
 	update_sys_files(cpu_sys_files);
 	parse_proc_cpuinfo(cpu_root, cpu_sys_files, old_core_bitmap);
+	parse_proc_stat(cpu_root, cpu_sys_files);
 	shrink_cpu_array(cpu_root);
 	shrink_core_list(cpu_root);
 

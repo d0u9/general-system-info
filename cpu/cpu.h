@@ -28,7 +28,6 @@ struct core_stat {
 #endif
 	u64 total;
 	u64 used;
-	u64 load;
 };
 
 struct core_desc {
@@ -66,6 +65,7 @@ struct cpus {
 	struct cpu_desc *cpus[CPUS_NUM_MAX];
 	unsigned long core_bitmap[BITS_TO_LONGS(CORES_NUM_MAX)];
 	struct list_head cores;
+	struct core_stat stat;
 };
 
 extern struct cpus *cpu_init(void);
