@@ -11,13 +11,16 @@
 
 struct addr_desc {
 	int family;
-	struct in_addr addr4;
-	struct in6_addr addr6;
+	union {
+		struct in_addr addr4;
+		struct in6_addr addr6;
+	};
 	struct list_head addr;
 };
 
 struct dev_desc {
 	char name[IFNAMSIZ];
+	unsigned int index;
 	bool online;
 	u64 collions;
 	u64 tx_errors;
@@ -33,6 +36,8 @@ struct dev_desc {
 	u16 vendor;
 	u16 device;
 	struct addr_desc addrs;
+	struct list_head devs;
+	struct list_head online_devs;
 };
 
 struct net {
@@ -45,7 +50,8 @@ struct net {
 	u64 total_tx_packages;
 	u64 total_rx_packages;
 	u64 total_collions;
-	struct dev_desc devs[NET_DEVICE_NUM_MAX];
+	struct list_head devs;
+	struct list_head online_devs;
 	unsigned long dev_btmp[BITS_TO_LONGS(NET_DEVICE_NUM_MAX)];
 	unsigned long online_btmp[BITS_TO_LONGS(NET_DEVICE_NUM_MAX)];
 };
