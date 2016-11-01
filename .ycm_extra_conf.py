@@ -63,6 +63,8 @@ flags = [
 '.',
 '-I',
 'cpu',
+'-I',
+'network',
 # For Linux
 '-isystem','/usr/lib/gcc/x86_64-linux-gnu/4.8',
 '-isystem','/usr/local/include',
