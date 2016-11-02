@@ -15,7 +15,8 @@ struct addr_desc {
 		struct in_addr addr4;
 		struct in6_addr addr6;
 	};
-	struct list_head addr;
+	struct list_head addrs;
+	struct list_head all_addrs;
 };
 
 struct dev_desc {
@@ -35,7 +36,7 @@ struct dev_desc {
 	u32 mtu;
 	u16 vendor;
 	u16 device;
-	struct addr_desc addrs;
+	struct list_head addrs;
 	struct list_head devs;
 	struct list_head online_devs;
 };
@@ -54,6 +55,7 @@ struct net {
 	struct list_head online_devs;
 	unsigned long dev_btmp[BITS_TO_LONGS(NET_DEVICE_NUM_MAX)];
 	unsigned long online_btmp[BITS_TO_LONGS(NET_DEVICE_NUM_MAX)];
+	struct list_head all_addrs;
 };
 
 extern struct net *net_init(void);
