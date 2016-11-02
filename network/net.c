@@ -8,8 +8,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include <linux/if_link.h>
 #include <trilib/log.h>
+#include <errno.h>
 #include <net.h>
 
 struct tmp_lists {
@@ -29,17 +31,64 @@ static struct dev_desc *find_dev_by_index(struct list_head *head,
 	return NULL;
 }
 
-static void assign_from_if_addrs(struct dev_desc *dev, struct ifaddrs *ifa)
+static void net_device(struct net *net, struct tmp_lists *tmp)
+{
+	struct ifreq ifr;
+	struct dev_desc *dev = NULL;
+	memset(&ifr, 0, sizeof(struct ifreq));
+
+	int sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+	if (sockfd < 0) {
+		printl_err("Create socket fd: %s\n", strerror(errno));
+		return;
+	}
+
+	list_for_each_entry(dev, &net->devs, devs) {
+		strncpy(ifr.ifr_name, dev->name, IFNAMSIZ);
+
+		if (ioctl(sockfd, SIOCGIFHWADDR, &ifr) < 0) {
+			printl_err("Get SIOCGIFNAME: %s\n", strerror(errno));
+		} else {
+			memcpy(dev->hwaddr, ifr.ifr_hwaddr.sa_data, sizeof(u64));
+			printl_debug("%-8s hwaddr: %02x:%02x:%02x:%02x:%02x:%02x\n", dev->name,
+				     dev->hwaddr[0], dev->hwaddr[1], dev->hwaddr[2],
+				     dev->hwaddr[3], dev->hwaddr[4], dev->hwaddr[5]);
+		}
+
+		if (ioctl(sockfd, SIOCGIFMTU, &ifr) < 0) {
+			printl_err("Get SIOCGIFMTU: %s\n", strerror(errno));
+		} else {
+			dev->mtu = (u32)ifr.ifr_mtu;
+			printl_debug("%-8s mtu: %lu\n", dev->name, dev->mtu);
+		}
+
+		if (dev->flags & IFF_LOWER_UP) {
+			dev->online = TRUE;
+			net->online_dev_num ++;
+			list_add_tail(&dev->online_devs, &net->online_devs);
+			printl_debug("%-8s lower_up: true\n");
+		} else {
+			dev->online = FALSE;
+			printl_debug("%-8s lower_up: false\n");
+		}
+
+	}
+}
+
+static void assign_dev_data(struct dev_desc *dev, struct ifaddrs *ifa)
 {
 	struct rtnl_link_stats *stats = ifa->ifa_data;
 
+	dev->flags = ifa->ifa_flags;
 	dev->collions = stats->collisions;
 	dev->tx_errors = stats->tx_errors;
 	dev->rx_errors = stats->rx_errors;
 	dev->tx_dropped = stats->tx_dropped;
 	dev->rx_dropped = stats->rx_dropped;
 	dev->tx_bytes = stats->tx_bytes;
+	printl_debug("%-8s tx bytes: %lu\n", dev->name, dev->tx_bytes);
 	dev->rx_bytes = stats->rx_bytes;
+	printl_debug("%-8s rx bytes: %lu\n", dev->name, dev->rx_bytes);
 	dev->tx_packages = stats->tx_packets;
 	dev->rx_packages = stats->rx_packets;
 }
@@ -53,6 +102,7 @@ static struct dev_desc *get_next_dev(struct net *net, const char *ifa_name,
 	if (!test_bit(index, net->dev_btmp))  {
 		if (list_empty(tmp_devs)) {
 			dev = calloc(1, sizeof(struct dev_desc));
+			net->total_dev_num++;
 		} else {
 			dev = list_entry(tmp_devs->next,
 					 struct dev_desc, devs);
@@ -71,7 +121,7 @@ static struct dev_desc *get_next_dev(struct net *net, const char *ifa_name,
 	return dev;
 }
 
-static struct addr_desc *get_next_addr(struct net *net, struct list_head *tmp_addrs)
+static struct addr_desc *get_next_addr(struct list_head *tmp_addrs)
 {
 	struct addr_desc *addr = NULL;
 	if (list_empty(tmp_addrs)) {
@@ -87,6 +137,29 @@ static struct addr_desc *get_next_addr(struct net *net, struct list_head *tmp_ad
 	return addr;
 }
 
+static void assign_addr(int family, struct addr_desc *addr, struct ifaddrs *ifa)
+{
+	addr->family = family;
+	addr->addr = ifa->ifa_addr;
+	addr->netmask = ifa->ifa_netmask;
+	if (ifa->ifa_flags & IFF_BROADCAST) {
+		addr->broadaddr = ifa->ifa_ifu.ifu_broadaddr;
+	} else {
+		addr->dstaddr = ifa->ifa_ifu.ifu_dstaddr;
+	}
+}
+
+static void update_net_total(struct net *net, struct dev_desc *dev)
+{
+	net->total_tx_bytes += dev->tx_bytes;
+	net->total_rx_bytes += dev->rx_bytes;
+	net->total_tx_dropped += dev->tx_dropped;
+	net->total_rx_dropped += dev->rx_dropped;
+	net->total_tx_packages += dev->tx_packages;
+	net->total_rx_packages += dev->rx_packages;
+	net->total_collions += dev->collions;
+}
+
 static void get_if_addrs(struct net *net, struct tmp_lists *tmp)
 {
 	struct ifaddrs *ifaddr, *ifa;
@@ -97,21 +170,20 @@ static void get_if_addrs(struct net *net, struct tmp_lists *tmp)
 	}
 
 	for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+		if (ifa->ifa_addr == NULL)
+			continue;
+
+		int family = ifa->ifa_addr->sa_family;
+
 		struct dev_desc *dev = get_next_dev(net, ifa->ifa_name, &tmp->devs);
 
-		if (ifa->ifa_addr->sa_family == AF_PACKET &&
-		    ifa->ifa_data != NULL) {
-			assign_from_if_addrs(dev, ifa);
-		} else if (ifa->ifa_addr->sa_family == AF_INET6) {
-			/*
-			 * IPv4 addr is obtained via netdevice. man netdevice
-			 * for more.
-			 */
-			LIST_HEAD(tmp_head);
-			struct addr_desc *addr = get_next_addr(net, &tmp->addrs);
-			addr->family = AF_INET6;
-			addr->addr6 =
-			      ((struct sockaddr_in6 *)ifa->ifa_addr)->sin6_addr;
+		if (family == AF_PACKET && ifa->ifa_data != NULL) {
+			assign_dev_data(dev, ifa);
+			update_net_total(net, dev);
+		} else if (family == AF_INET6 || family == AF_INET) {
+			struct addr_desc *addr = get_next_addr(&tmp->addrs);
+			assign_addr(family, addr, ifa);
+
 			list_add_tail(&addr->all_addrs, &net->all_addrs);
 			list_add_tail(&addr->addrs, &dev->addrs);
 		}
@@ -148,8 +220,11 @@ void net_update(struct net *net)
 	INIT_LIST_HEAD(&tmp.addrs);
 	list_cut_position(&tmp.devs, &net->devs, (&net->devs)->prev);
 	list_cut_position(&tmp.addrs, &net->all_addrs, (&net->all_addrs)->prev);
+	INIT_LIST_HEAD(&net->online_devs);
 	bitmap_zero(net->dev_btmp, BITS_TO_LONGS(NET_DEVICE_NUM_MAX));
+	memset(net, 0, offsetof(struct net, devs));
 
 	get_if_addrs(net, &tmp);
+	net_device(net, &tmp);
 }
 
