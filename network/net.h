@@ -7,13 +7,18 @@
 #include <trilib/list.h>
 #include <trilib/bitmap.h>
 
-#define NET_DEVICE_NUM_MAX	16
+#define NET_DEVICE_NUM_MAX	64
+#define IFF_LOWER_UP		(1<<16)
 
 struct addr_desc {
 	int family;
+	struct sockaddr *addr;
+	struct sockaddr *netmask;
 	union {
-		struct in_addr addr4;
-		struct in6_addr addr6;
+		/* Broadcast address of interface */
+		struct sockaddr *broadaddr;
+		/* Point-to-point destination address */
+		struct sockaddr *dstaddr;
 	};
 	struct list_head addrs;
 	struct list_head all_addrs;
@@ -23,6 +28,8 @@ struct dev_desc {
 	char name[IFNAMSIZ];
 	unsigned int index;
 	bool online;
+	/* more about flags, see SIOCGIFFLAGS in netdevice(7) */
+	unsigned int flags;
 	u64 collions;
 	u64 tx_errors;
 	u64 rx_errors;
@@ -32,8 +39,8 @@ struct dev_desc {
 	u64 rx_bytes;
 	u64 tx_packages;
 	u64 rx_packages;
-	u64 mac;
 	u32 mtu;
+	unsigned char hwaddr[6];
 	u16 vendor;
 	u16 device;
 	struct list_head addrs;
