@@ -189,6 +189,18 @@ static void get_if_addrs(struct net *net, struct tmp_lists *tmp)
 		}
 	}
 
+	struct dev_desc *dev = NULL, *tmp_dev = NULL;
+	list_for_each_entry_safe(dev, tmp_dev, &tmp->devs, devs) {
+		list_del(&dev->devs);
+		free(dev);
+	}
+
+	struct addr_desc *addr = NULL, *tmp_addr = NULL;
+	list_for_each_entry_safe(addr, tmp_addr, &tmp->addrs, all_addrs) {
+		list_del(&addr->all_addrs);
+		free(addr);
+	}
+
 	freeifaddrs(ifaddr);
 }
 
