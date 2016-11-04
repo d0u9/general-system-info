@@ -214,8 +214,26 @@ struct net *net_init(void)
 	return ret;
 }
 
+static void free_addrs(struct net *net)
+{
+	struct addr_desc *cur = NULL, *tmp = NULL;
+	list_for_each_entry_safe(cur, tmp, &net->all_addrs, all_addrs) {
+		free(cur);
+	}
+}
+
+static void free_devs(struct net *net)
+{
+	struct dev_desc *cur = NULL, *tmp = NULL;
+	list_for_each_entry_safe(cur, tmp, &net->devs, devs) {
+		free(cur);
+	}
+}
+
 void net_exit(struct net *net)
 {
+	free_addrs(net);
+	free_devs(net);
 	free(net);
 }
 
