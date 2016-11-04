@@ -13,11 +13,51 @@
 #include <trilib/log.h>
 #include <errno.h>
 #include <net.h>
+#include <utils.h>
 
 struct tmp_lists {
 	struct list_head devs;
 	struct list_head addrs;
 };
+
+static void get_vendor(struct net *net)
+{
+	struct dev_desc *dev = NULL;
+	char pathname[PATH_NAME_MAX] = {0};
+	char tmp_buf[16] = {0};
+
+	list_for_each_entry(dev, &net->devs, devs) {
+		dev->vendor = dev->device = dev->class = 0;
+
+		snprintf(pathname, PATH_NAME_MAX,
+			 "/sys/class/net/%s/device/vendor", dev->name);
+		if (access(pathname, F_OK) < 0) {
+			printl_debug("%s doesn't exist\n", pathname);
+		} else {
+			dev->vendor = stoul(first_line_of_file(pathname, tmp_buf, 16));
+		}
+
+		snprintf(pathname, PATH_NAME_MAX,
+			 "/sys/class/net/%s/device/device", dev->name);
+		if (access(pathname, F_OK) < 0) {
+			printl_debug("%s doesn't exist\n", pathname);
+		} else {
+			dev->device = stoul(first_line_of_file(pathname, tmp_buf, 16));
+		}
+
+		snprintf(pathname, PATH_NAME_MAX,
+			 "/sys/class/net/%s/device/class", dev->name);
+		if (access(pathname, F_OK) < 0) {
+			printl_debug("%s doesn't exist\n", pathname);
+		} else {
+			dev->class = stoul(first_line_of_file(pathname, tmp_buf, 16));
+		}
+
+		printl_debug("%s - vendor %lx, device %lx, class %lx\n",
+			     dev->name, dev->vendor, dev->device, dev->class);
+
+	}
+}
 
 static struct dev_desc *find_dev_by_index(struct list_head *head,
 					  unsigned int index)
@@ -256,5 +296,6 @@ void net_update(struct net *net)
 
 	get_if_addrs(net, &tmp);
 	net_device(net, &tmp);
+	get_vendor(net);
 }
 

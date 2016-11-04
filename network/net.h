@@ -9,6 +9,7 @@
 
 #define NET_DEVICE_NUM_MAX	64
 #define IFF_LOWER_UP		(1<<16)
+#define PATH_NAME_MAX		256
 
 struct addr_desc {
 	int family;
@@ -43,6 +44,7 @@ struct dev_desc {
 	unsigned char hwaddr[6];
 	u16 vendor;
 	u16 device;
+	u32 class;
 	struct list_head addrs;
 	struct list_head devs;
 	struct list_head online_devs;
