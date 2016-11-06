@@ -14,48 +14,74 @@
 #include <errno.h>
 #include <net.h>
 #include <utils.h>
+#include <libgen.h>
 
 struct tmp_lists {
 	struct list_head devs;
 	struct list_head addrs;
 };
 
+static void _get_vendor(char *dev_path, struct dev_desc *dev, enum if_type ift)
+{
+	char fvendor[PATH_NAME_MAX] = {0};
+	char fdevice[PATH_NAME_MAX] = {0};
+	char tmp[16] = {0};
+
+	dev->if_type = ift;
+	for (char *dname = dirname(dev_path);
+	     strncmp(dname, "/sys/devices", PATH_NAME_MAX) != 0;
+	     dname = dirname(dname)) {
+
+		if (ift == USB) {
+			snprintf(fvendor, PATH_NAME_MAX, "%s/idVendor", dname);
+			snprintf(fdevice, PATH_NAME_MAX, "%s/idProduct", dname);
+		} else if (ift == PCI) {
+			snprintf(fvendor, PATH_NAME_MAX, "%s/vendor", dname);
+			snprintf(fdevice, PATH_NAME_MAX, "%s/device", dname);
+		}
+
+		if (access(fvendor, R_OK) != -1) {
+			dev->vendor = stoulx(first_line_of_file(fvendor, tmp, 16));
+		}
+
+		if (access(fdevice, R_OK) != -1) {
+			dev->device = stoulx(first_line_of_file(fdevice, tmp, 16));
+		}
+
+		if (dev->vendor != 0 || dev->device != 0)
+			break;
+	}
+	printl_debug("type: %d, vendor: %lx, product: %lx\n",
+		     ift, dev->vendor, dev->device);
+
+}
+
 static void get_vendor(struct net *net)
 {
 	struct dev_desc *dev = NULL;
 	char pathname[PATH_NAME_MAX] = {0};
-	char tmp_buf[16] = {0};
+	char rpath[PATH_NAME_MAX] = {0};
 
 	list_for_each_entry(dev, &net->devs, devs) {
 		dev->vendor = dev->device = dev->class = 0;
 
 		snprintf(pathname, PATH_NAME_MAX,
-			 "/sys/class/net/%s/device/vendor", dev->name);
-		if (access(pathname, F_OK) < 0) {
-			printl_debug("%s doesn't exist\n", pathname);
-		} else {
-			dev->vendor = stoul(first_line_of_file(pathname, tmp_buf, 16));
+			 "/sys/class/net/%s", dev->name);
+		realpath(pathname, rpath);
+
+		char *substr1 = NULL, *substr2 = NULL;
+		if ((substr1 = strstr(rpath, "pci")) == NULL) {
+			printl_debug("%s is virtual device\n", dev->name);
+			continue;
 		}
 
-		snprintf(pathname, PATH_NAME_MAX,
-			 "/sys/class/net/%s/device/device", dev->name);
-		if (access(pathname, F_OK) < 0) {
-			printl_debug("%s doesn't exist\n", pathname);
-		} else {
-			dev->device = stoul(first_line_of_file(pathname, tmp_buf, 16));
+		if ((substr2 = strstr(substr1, "usb")) != NULL) {
+			printl_debug("%s is usb device\n", dev->name);
+			_get_vendor(rpath, dev, USB);
+			continue;
 		}
 
-		snprintf(pathname, PATH_NAME_MAX,
-			 "/sys/class/net/%s/device/class", dev->name);
-		if (access(pathname, F_OK) < 0) {
-			printl_debug("%s doesn't exist\n", pathname);
-		} else {
-			dev->class = stoul(first_line_of_file(pathname, tmp_buf, 16));
-		}
-
-		printl_debug("%s - vendor %lx, device %lx, class %lx\n",
-			     dev->name, dev->vendor, dev->device, dev->class);
-
+		_get_vendor(rpath, dev, PCI);
 	}
 }
 

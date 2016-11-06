@@ -15,6 +15,7 @@ extern char *trim(const char *ch_list, int list_len,
 
 #define trim_whitespaces(str, len)	trim(" \n\t", 4, str, len)
 #define stoul(str)	strtoul(str, NULL, 0)
+#define stoulx(str)	strtoul(str, NULL, 16)
 
 static inline char *first_line_of_file(const char *path, char *buff, int len)
 {

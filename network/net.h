@@ -11,6 +11,11 @@
 #define IFF_LOWER_UP		(1<<16)
 #define PATH_NAME_MAX		256
 
+enum if_type {
+	PCI,
+	USB,
+};
+
 struct addr_desc {
 	int family;
 	struct sockaddr *addr;
@@ -42,6 +47,7 @@ struct dev_desc {
 	u64 rx_packages;
 	u32 mtu;
 	unsigned char hwaddr[6];
+	enum if_type if_type;
 	u16 vendor;
 	u16 device;
 	u32 class;
