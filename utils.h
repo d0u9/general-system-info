@@ -17,7 +17,7 @@ extern char *trim(const char *ch_list, int list_len,
 #define stoul(str)	strtoul(str, NULL, 0)
 #define stoulx(str)	strtoul(str, NULL, 16)
 
-static inline char *first_line_of_file(const char *path, char *buff, int len)
+static inline char *get_first_line(const char *path, char *buff, int len)
 {
 	FILE *fp = fopen(path, "r");
 	char *ret = fgets(buff, len, fp);

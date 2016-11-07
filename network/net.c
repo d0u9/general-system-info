@@ -41,11 +41,11 @@ static void _get_vendor(char *dev_path, struct dev_desc *dev, enum if_type ift)
 		}
 
 		if (access(fvendor, R_OK) != -1) {
-			dev->vendor = stoulx(first_line_of_file(fvendor, tmp, 16));
+			dev->vendor = stoulx(get_first_line(fvendor, tmp, 16));
 		}
 
 		if (access(fdevice, R_OK) != -1) {
-			dev->device = stoulx(first_line_of_file(fdevice, tmp, 16));
+			dev->device = stoulx(get_first_line(fdevice, tmp, 16));
 		}
 
 		if (dev->vendor != 0 || dev->device != 0)
