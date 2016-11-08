@@ -26,7 +26,7 @@ struct disk_desc {
 	unsigned long flag;
 	unsigned long namemax;
 	struct io_desc io;
-	struct list_head disks;
+	struct list_head disks;				//mounted disks
 	struct list_head all_disks;
 };
 
