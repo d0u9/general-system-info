@@ -17,7 +17,7 @@ struct io_desc {
 };
 
 struct disk_desc {
-	unsigned devname[DEV_NAME_LEN_MAX];
+	char devname[DEV_NAME_LEN_MAX];
 	unsigned long size;				//in 512bytes sectors
 	char model[MODEL_NAME_LEN_MAX];
 	struct io_desc io;
@@ -26,6 +26,7 @@ struct disk_desc {
 };
 
 struct partition_desc {
+	unsigned devname[DEV_NAME_LEN_MAX];
 	unsigned long bsize;
 	unsigned long frsize;
 	unsigned long blocks;
