@@ -4,6 +4,7 @@
 #include <trilib/core.h>
 #include <trilib/list.h>
 
+#define VENDOR_NAME_LEN_MAX	128
 #define MODEL_NAME_LEN_MAX	128
 #define DEV_NAME_LEN_MAX	16
 
@@ -19,6 +20,7 @@ struct io_desc {
 struct disk_desc {
 	char devname[DEV_NAME_LEN_MAX];
 	unsigned long size;				//in 512bytes sectors
+	char vendor[VENDOR_NAME_LEN_MAX];
 	char model[MODEL_NAME_LEN_MAX];
 	struct io_desc io;
 	struct list_head disk_list;
