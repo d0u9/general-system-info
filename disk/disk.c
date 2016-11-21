@@ -3,6 +3,8 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <string.h>
+#include <utils.h>
+#include <inttypes.h>
 
 #include <disk.h>
 #include <trilib/list.h>
@@ -39,6 +41,37 @@ struct disk_desc *get_next_disk(struct list_head *tmp_disk_list)
 	return ret;
 }
 
+void get_io(struct io_desc *io, const char *path)
+{
+	char buff[1024] = {0};
+	get_first_line(path, buff, 1024);
+
+	sscanf(buff, "%"SCNu64" %"SCNu64" %"SCNu64" %*"SCNu64" "
+	       "%"SCNu64" %"SCNu64" %"SCNu64" %*"SCNu64" "
+	       "%*"SCNu64" %*"SCNu64" %*"SCNu64,
+	       &io->read_io, &io->read_io_merged, &io->read_sector,
+	       &io->write_io, &io->write_io_merged, &io->write_sector);
+}
+
+void get_disk_info(struct disk_desc *disk)
+{
+	char file_path[1024] = {0};
+	char buff[1024] = {0};
+
+	snprintf(file_path, 1024, SYSFS_DIR"/%s/size", disk->devname);
+	disk->size = stoul(get_first_line(file_path, buff, 1024));
+
+	snprintf(file_path, 1024, SYSFS_DIR"/%s/device/model", disk->devname);
+	get_first_line(file_path, disk->model, MODEL_NAME_LEN_MAX);
+
+	snprintf(file_path, 1024, SYSFS_DIR"/%s/device/vendor", disk->devname);
+	get_first_line(file_path, disk->vendor, VENDOR_NAME_LEN_MAX);
+
+	snprintf(file_path, 1024, SYSFS_DIR"/%s/stat", disk->devname);
+	get_io(&disk->io, file_path);
+}
+
+
 void scan_sysfs(struct disks *disk_root, struct list_head *tmp_disk_list,
 		struct list_head *tmp_partitions)
 {
@@ -54,8 +87,9 @@ void scan_sysfs(struct disks *disk_root, struct list_head *tmp_disk_list,
 
 		disk = get_next_disk(tmp_disk_list);
 		strncpy(disk->devname, dirent->d_name, DEV_NAME_LEN_MAX);
-		printf("%s\n", dirent->d_name);
+		get_disk_info(disk);
 		list_add_tail(&disk->disk_list, &disk_root->disk_list);
+		printf("%s\n", dirent->d_name);
 	}
 
 }
