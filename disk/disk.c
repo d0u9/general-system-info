@@ -71,6 +71,23 @@ void get_disk_info(struct disk_desc *disk)
 	get_io(&disk->io, file_path);
 }
 
+void get_partition_info(struct partition_desc *part, const char *parent_path)
+{
+	char file_path[1024] = {0};
+	char buff[1024] = {0};
+
+	snprintf(file_path, 1024, "%s/%s/size", parent_path, part->devname);
+	part->size = stoul(get_first_line(file_path, buff, 1024));
+
+	snprintf(file_path, 1024, "%s/%s/partition", parent_path, part->devname);
+	part->part_num = stoul(get_first_line(file_path, buff, 1024));
+
+	snprintf(file_path, 1024, "%s/%s/stat", parent_path, part->devname);
+	get_io(&part->io, file_path);
+}
+
+
+
 void scan_partitions(struct disks *disk_root, struct disk_desc *cur_disk,
 		     struct list_head *tmp_partitions)
 {
@@ -94,6 +111,7 @@ void scan_partitions(struct disks *disk_root, struct disk_desc *cur_disk,
 		printf("=== %s\n", dirent->d_name);
 		part = get_next_partition(tmp_partitions);
 		strncpy(part->devname, dirent->d_name, DEV_NAME_LEN_MAX);
+		get_partition_info(part, part_path);
 		list_add_tail(&part->partitions, &disk_root->partitions);
 		list_add_tail(&part->d_partitions, &cur_disk->d_partitions);
 	}
