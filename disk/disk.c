@@ -163,7 +163,17 @@ void disk_update(struct disks *disk_root)
 
 void disk_exit(struct disks *disk_root)
 {
+	struct partition_desc *cur_part = NULL, *tmp_part = NULL;
+	list_for_each_entry_safe(cur_part, tmp_part, &disk_root->partitions, partitions) {
+		free(cur_part);
+	}
 
+	struct disk_desc *cur_disk = NULL, *tmp_disk = NULL;
+	list_for_each_entry_safe(cur_disk, tmp_disk, &disk_root->disk_list, disk_list) {
+		free(cur_disk);
+	}
+
+	free(disk_root);
 }
 
 
