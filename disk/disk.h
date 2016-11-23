@@ -30,6 +30,7 @@ struct disk_desc {
 struct partition_desc {
 	char devname[DEV_NAME_LEN_MAX];
 	int mounted;
+	unsigned long part_num;
 	unsigned long bsize;
 	unsigned long frsize;
 	unsigned long blocks;
@@ -41,6 +42,7 @@ struct partition_desc {
 	unsigned long fsid;
 	unsigned long flag;
 	unsigned long namemax;
+	unsigned long size;
 	struct io_desc io;
 	struct disk_desc *p_disk;
 	struct list_head d_partitions;
