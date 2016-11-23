@@ -72,7 +72,7 @@ void get_disk_info(struct disk_desc *disk)
 }
 
 
-void scan_sysfs(struct disks *disk_root, struct list_head *tmp_disk_list,
+void scan_disks(struct disks *disk_root, struct list_head *tmp_disk_list,
 		struct list_head *tmp_partitions)
 {
 	DIR *sys_dir = NULL;
@@ -89,7 +89,6 @@ void scan_sysfs(struct disks *disk_root, struct list_head *tmp_disk_list,
 		strncpy(disk->devname, dirent->d_name, DEV_NAME_LEN_MAX);
 		get_disk_info(disk);
 		list_add_tail(&disk->disk_list, &disk_root->disk_list);
-		printf("%s\n", dirent->d_name);
 	}
 
 }
@@ -112,7 +111,7 @@ void disk_update(struct disks *disk_root)
 	list_splice_init(&disk_root->partitions, &tmp_partitions);
 	list_splice_init(&disk_root->disk_list, &tmp_disk_list);
 
-	scan_sysfs(disk_root, &tmp_disk_list, &tmp_partitions);
+	scan_disks(disk_root, &tmp_disk_list, &tmp_partitions);
 
 }
 
