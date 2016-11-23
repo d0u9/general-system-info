@@ -71,6 +71,33 @@ void get_disk_info(struct disk_desc *disk)
 	get_io(&disk->io, file_path);
 }
 
+void scan_partitions(struct disks *disk_root, struct disk_desc *cur_disk,
+		     struct list_head *tmp_partitions)
+{
+	DIR *disk_dir = NULL;
+	struct dirent *dirent = NULL;
+	struct partition_desc *part = NULL;
+	char part_path[1024] = {0};
+	int dev_name_len = 0;
+
+	snprintf(part_path, 1024, SYSFS_DIR"/%s", cur_disk->devname);
+	disk_dir = opendir(part_path);
+
+	dev_name_len = strlen(cur_disk->devname);
+	while ((dirent = readdir(disk_dir))) {
+		if (!strcmp(".", dirent->d_name) || !strcmp("..", dirent->d_name))
+			continue;
+
+		if (strncmp(cur_disk->devname, dirent->d_name, dev_name_len))
+			continue;
+
+		printf("=== %s\n", dirent->d_name);
+		part = get_next_partition(tmp_partitions);
+		strncpy(part->devname, dirent->d_name, DEV_NAME_LEN_MAX);
+		list_add_tail(&part->partitions, &disk_root->partitions);
+		list_add_tail(&part->d_partitions, &cur_disk->d_partitions);
+	}
+}
 
 void scan_disks(struct disks *disk_root, struct list_head *tmp_disk_list,
 		struct list_head *tmp_partitions)
@@ -88,6 +115,7 @@ void scan_disks(struct disks *disk_root, struct list_head *tmp_disk_list,
 		disk = get_next_disk(tmp_disk_list);
 		strncpy(disk->devname, dirent->d_name, DEV_NAME_LEN_MAX);
 		get_disk_info(disk);
+		scan_partitions(disk_root, disk, tmp_partitions);
 		list_add_tail(&disk->disk_list, &disk_root->disk_list);
 	}
 
