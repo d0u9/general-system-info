@@ -7,6 +7,8 @@
 #define VENDOR_NAME_LEN_MAX	128
 #define MODEL_NAME_LEN_MAX	128
 #define DEV_NAME_LEN_MAX	16
+#define PATH_NAME_LEN_MAX	512
+#define MOUNT_PARM_LEN_MAX	512
 
 struct io_desc {
 	u64 read_io;
@@ -15,6 +17,13 @@ struct io_desc {
 	u64 write_io_merged;
 	u64 read_sector;
 	u64 write_sector;
+};
+
+struct mount_desc {
+	struct list_head mount_list;
+	char mount_point[PATH_NAME_LEN_MAX];
+	char fs_type[64];
+	char mount_parm[MOUNT_PARM_LEN_MAX];
 };
 
 struct disk_desc {
@@ -44,7 +53,8 @@ struct partition_desc {
 	unsigned long namemax;
 	unsigned long size;
 	struct io_desc io;
-	struct disk_desc *p_disk;
+	struct list_head mount_list;
+	struct disk_desc p_disk;
 	struct list_head d_partitions;
 	struct list_head partitions;
 };
