@@ -314,8 +314,8 @@ void net_update(struct net *net)
 	struct tmp_lists tmp;
 	INIT_LIST_HEAD(&tmp.devs);
 	INIT_LIST_HEAD(&tmp.addrs);
-	list_cut_position(&tmp.devs, &net->devs, (&net->devs)->prev);
-	list_cut_position(&tmp.addrs, &net->all_addrs, (&net->all_addrs)->prev);
+	list_splice_init(&net->devs, &tmp.devs);
+	list_splice_init(&net->all_addrs, &tmp.addrs);
 	INIT_LIST_HEAD(&net->online_devs);
 	bitmap_zero(net->dev_btmp, BITS_TO_LONGS(NET_DEVICE_NUM_MAX));
 	memset(net, 0, offsetof(struct net, devs));
