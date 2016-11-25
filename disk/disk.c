@@ -9,6 +9,7 @@
 
 #include <disk.h>
 #include <trilib/list.h>
+#include <trilib/log.h>
 
 #define SYSFS_DIR	"/sys/block"
 
@@ -52,7 +53,7 @@ struct disk_desc *get_next_disk(struct list_head *tmp_disk_list)
 void get_io(struct io_desc *io, const char *path)
 {
 	char buff[1024] = {0};
-	get_first_line(path, buff, 1024);
+	first_line_no_nl(path, buff, 1024);
 
 	sscanf(buff, "%"SCNu64" %"SCNu64" %"SCNu64" %*"SCNu64" "
 	       "%"SCNu64" %"SCNu64" %"SCNu64" %*"SCNu64" "
@@ -67,21 +68,23 @@ void get_disk_info(struct disk_desc *disk)
 	char buff[1024] = {0};
 
 	snprintf(file_path, 1024, SYSFS_DIR"/%s/size", disk->devname);
-	disk->size = stoul(get_first_line(file_path, buff, 1024));
+	disk->size = stoul(first_line_no_nl(file_path, buff, 1024));
 
 	snprintf(file_path, 1024, SYSFS_DIR"/%s/device/model", disk->devname);
-	get_first_line(file_path, disk->model, MODEL_NAME_LEN_MAX);
+	first_line_no_nl(file_path, disk->model, MODEL_NAME_LEN_MAX);
 
 	snprintf(file_path, 1024, SYSFS_DIR"/%s/device/vendor", disk->devname);
-	get_first_line(file_path, disk->vendor, VENDOR_NAME_LEN_MAX);
+	first_line_no_nl(file_path, disk->vendor, VENDOR_NAME_LEN_MAX);
 
 	snprintf(file_path, 1024, SYSFS_DIR"/%s/stat", disk->devname);
 	get_io(&disk->io, file_path);
+
+	printl_debug("| size=%lu, model=%s, vendor=%s\n",
+		     disk->size, disk->model, disk->vendor);
 }
 
 void get_mount_info(struct partition_desc *part, struct list_head *mount_wrap_list)
 {
-	printf("========== %s\n", part->devname);
 	struct mount_wrap_desc *cur = NULL, *tmp = NULL;
 	list_for_each_entry_safe(cur, tmp, mount_wrap_list, list) {
 		if (strncmp(cur->devname, part->devname, DEV_NAME_LEN_MAX))
@@ -94,16 +97,10 @@ void get_mount_info(struct partition_desc *part, struct list_head *mount_wrap_li
 
 void get_vfs_stat(struct partition_desc *part)
 {
-	printf("part %s\n", part->devname);
 	struct statvfs vfs_stat;
 
 	memset(&vfs_stat, 0, sizeof(vfs_stat));
-	printf("mount_point %s\n", first_mount_point(part)->mount_point);
-
 	statvfs(first_mount_point(part)->mount_point, &vfs_stat);
-
-	printf("bs=%lu, f_b=%lu\n", vfs_stat.f_bsize, vfs_stat.f_bfree);
-	printf("inodes=%lu, f_inodes=%lu\n", vfs_stat.f_files, vfs_stat.f_ffree);
 
 	part->bsize = vfs_stat.f_bsize;
 	part->frsize = vfs_stat.f_frsize;
@@ -125,18 +122,29 @@ void get_partition_info(struct partition_desc *part, const char *parent_path,
 	char buff[1024] = {0};
 
 	snprintf(file_path, 1024, "%s/%s/size", parent_path, part->devname);
-	part->size = stoul(get_first_line(file_path, buff, 1024));
+	part->size = stoul(first_line_no_nl(file_path, buff, 1024));
 
 	snprintf(file_path, 1024, "%s/%s/partition", parent_path, part->devname);
-	part->part_num = stoul(get_first_line(file_path, buff, 1024));
+	part->part_num = stoul(first_line_no_nl(file_path, buff, 1024));
 
 	snprintf(file_path, 1024, "%s/%s/stat", parent_path, part->devname);
 	get_io(&part->io, file_path);
 
 	get_mount_info(part, mount_wrap_list);
 
-	if (part->mounted)
+	printl_debug("|  size=%lu, mounted=%s\n",
+		     part->size, (part->mounted) ? "True" : "False");
+
+	if (part->mounted) {
 		get_vfs_stat(part);
+#ifdef DEBUG
+		struct mount_desc *cur = NULL;
+		list_for_each_entry(cur, &part->mount_list, mount_list) {
+			printl_debug("|  |- mount point:%s, fs type:%s, mount param:%s\n",
+				     cur->mount_point, cur->fs_type, cur->mount_parm);
+		}
+#endif
+	}
 }
 
 void scan_partitions(struct disks *disk_root, struct list_head *mount_wrap_list,
@@ -159,6 +167,7 @@ void scan_partitions(struct disks *disk_root, struct list_head *mount_wrap_list,
 		if (strncmp(cur_disk->devname, dirent->d_name, dev_name_len))
 			continue;
 
+		printl_debug("|- %s\n", dirent->d_name);
 		part = get_next_partition(tmp_partitions);
 		strncpy(part->devname, dirent->d_name, DEV_NAME_LEN_MAX);
 		get_partition_info(part, part_path, mount_wrap_list);
@@ -181,16 +190,13 @@ void scan_disks(struct disks *disk_root, struct list_head *mount_wrap_list,
 		if(!strcmp(".", dirent->d_name) || !strcmp("..", dirent->d_name))
 			continue;
 
+		printl_debug("%s\n", dirent->d_name);
 		disk = get_next_disk(tmp_disk_list);
 		strncpy(disk->devname, dirent->d_name, DEV_NAME_LEN_MAX);
 		get_disk_info(disk);
 		scan_partitions(disk_root, mount_wrap_list, disk, tmp_partitions);
 		list_add_tail(&disk->disk_list, &disk_root->disk_list);
 	}
-
-	// TODO: free all the unused list nodes in tmp_partitions and
-	// tmp_disk_list
-	//
 }
 
 struct mount_wrap_desc *get_next_mount_wrapper(struct list_head *mount_wrap_list)
@@ -239,7 +245,11 @@ void parse_mount_file(struct list_head *mount_wrap_list)
 	free(line);
 	fclose(fp);
 
-	//TODO: free unused elements
+	struct list_head *cur = NULL, *tmp = NULL;
+	list_for_each_safe(cur, tmp, mount_wrap_list) {
+		list_del(cur);
+		free(list_entry(cur, struct mount_wrap_desc, list));
+	}
 
 	list_splice(&new_wrap_list, mount_wrap_list);
 }
@@ -267,12 +277,34 @@ void disk_update(struct disks *disk_root)
 
 	scan_disks(disk_root, &mount_wrap_list, &tmp_disk_list, &tmp_partitions);
 
+	struct list_head *cur = NULL, *tmp = NULL;
+	list_for_each_safe(cur, tmp, &tmp_disk_list) {
+		list_del(cur);
+		free(list_entry(cur, struct disk_desc, disk_list));
+	}
+
+	list_for_each_safe(cur, tmp, &tmp_partitions) {
+		list_del(cur);
+		free(list_entry(cur, struct partition_desc, partitions));
+	}
 }
 
 void disk_exit(struct disks *disk_root)
 {
+	// The piece of code below is not very graceful, however, it works.
+	// Some refactors are needed in future day.
+
 	struct partition_desc *cur_part = NULL, *tmp_part = NULL;
+	struct list_head *cur = NULL, *tmp = NULL;
+	struct mount_wrap_desc *wrap;
+	struct mount_desc *mount;
 	list_for_each_entry_safe(cur_part, tmp_part, &disk_root->partitions, partitions) {
+		list_for_each_safe(cur, tmp, &cur_part->mount_list) {
+			mount = list_entry(cur, struct mount_desc, mount_list);
+			list_del(&mount->mount_list);
+			free(list_entry(mount, struct mount_wrap_desc, mount_info));
+		}
+		list_del(&cur_part->partitions);
 		free(cur_part);
 	}
 
@@ -280,6 +312,7 @@ void disk_exit(struct disks *disk_root)
 	list_for_each_entry_safe(cur_disk, tmp_disk, &disk_root->disk_list, disk_list) {
 		free(cur_disk);
 	}
+
 
 	free(disk_root);
 }
