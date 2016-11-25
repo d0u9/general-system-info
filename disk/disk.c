@@ -5,6 +5,7 @@
 #include <string.h>
 #include <utils.h>
 #include <inttypes.h>
+#include <sys/statvfs.h>
 
 #include <disk.h>
 #include <trilib/list.h>
@@ -91,6 +92,32 @@ void get_mount_info(struct partition_desc *part, struct list_head *mount_wrap_li
 	}
 }
 
+void get_vfs_stat(struct partition_desc *part)
+{
+	printf("part %s\n", part->devname);
+	struct statvfs vfs_stat;
+
+	memset(&vfs_stat, 0, sizeof(vfs_stat));
+	printf("mount_point %s\n", first_mount_point(part)->mount_point);
+
+	statvfs(first_mount_point(part)->mount_point, &vfs_stat);
+
+	printf("bs=%lu, f_b=%lu\n", vfs_stat.f_bsize, vfs_stat.f_bfree);
+	printf("inodes=%lu, f_inodes=%lu\n", vfs_stat.f_files, vfs_stat.f_ffree);
+
+	part->bsize = vfs_stat.f_bsize;
+	part->frsize = vfs_stat.f_frsize;
+	part->blocks = vfs_stat.f_blocks;
+	part->bfree = vfs_stat.f_bfree;
+	part->bavail = vfs_stat.f_bavail;
+	part->files = vfs_stat.f_files;
+	part->ffree = vfs_stat.f_ffree;
+	part->favail = vfs_stat.f_bavail;
+	part->fsid = vfs_stat.f_fsid;
+	part->flag = vfs_stat.f_flag;
+	part->namemax = vfs_stat.f_namemax;
+}
+
 void get_partition_info(struct partition_desc *part, const char *parent_path,
 			struct list_head *mount_wrap_list)
 {
@@ -107,6 +134,9 @@ void get_partition_info(struct partition_desc *part, const char *parent_path,
 	get_io(&part->io, file_path);
 
 	get_mount_info(part, mount_wrap_list);
+
+	if (part->mounted)
+		get_vfs_stat(part);
 }
 
 void scan_partitions(struct disks *disk_root, struct list_head *mount_wrap_list,

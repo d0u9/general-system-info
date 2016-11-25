@@ -10,6 +10,9 @@
 #define PATH_NAME_LEN_MAX	512
 #define MOUNT_PARM_LEN_MAX	512
 
+#define first_mount_point(partition)					\
+	list_first_entry((&partition->mount_list), struct mount_desc, mount_list)
+
 struct io_desc {
 	u64 read_io;
 	u64 write_io;
