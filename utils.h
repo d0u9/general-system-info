@@ -17,12 +17,36 @@ extern char *trim(const char *ch_list, int list_len,
 #define stoul(str)	strtoul(str, NULL, 0)
 #define stoulx(str)	strtoul(str, NULL, 16)
 
-static inline char *get_first_line(const char *path, char *buff, int len)
+static inline char *strip_newline(char *buff, int len)
+{
+	//binary search
+	int left = 0, right = len - 1, mid = (left + right) / 2;
+
+	while (mid != left && mid != right) {
+		if (buff[mid] == '\0')
+			right = mid;
+		else
+			left = mid;
+		mid = (left + right) / 2;
+	}
+
+	if (buff[left] == '\n')
+		buff[left] = 0;
+
+	return buff;
+}
+
+static inline char *first_line(const char *path, char *buff, int len)
 {
 	FILE *fp = fopen(path, "r");
 	char *ret = fgets(buff, len, fp);
 	fclose(fp);
 	return ret;
+}
+
+static inline char *first_line_no_nl(const char *path, char *buff, int len)
+{
+	return strip_newline(first_line(path, buff, len), len);
 }
 
 #endif
