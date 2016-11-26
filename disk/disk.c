@@ -19,13 +19,14 @@ struct mount_wrap_desc {
 	struct mount_desc mount_info;
 };
 
-struct partition_desc *get_next_partition(struct list_head *tmp_partitions)
+static struct partition_desc *get_next_partition(struct list_head *tmp_partitions)
 {
 	struct partition_desc *ret = NULL;
 	if (list_empty(tmp_partitions)) {
 		ret = calloc(1, sizeof(struct partition_desc));
 	} else {
-		ret = list_entry(tmp_partitions->next, struct partition_desc, partitions);
+		ret = list_entry(tmp_partitions->next,
+				 struct partition_desc, partitions);
 		list_del_init(tmp_partitions->next);
 	}
 
@@ -35,7 +36,7 @@ struct partition_desc *get_next_partition(struct list_head *tmp_partitions)
 	return ret;
 }
 
-struct disk_desc *get_next_disk(struct list_head *tmp_disk_list)
+static struct disk_desc *get_next_disk(struct list_head *tmp_disk_list)
 {
 	struct disk_desc *ret = NULL;
 	if (list_empty(tmp_disk_list)) {
@@ -50,7 +51,7 @@ struct disk_desc *get_next_disk(struct list_head *tmp_disk_list)
 	return ret;
 }
 
-void get_io(struct io_desc *io, const char *path)
+static void get_io(struct io_desc *io, const char *path)
 {
 	char buff[1024] = {0};
 	first_line_no_nl(path, buff, 1024);
@@ -62,7 +63,7 @@ void get_io(struct io_desc *io, const char *path)
 	       &io->write_io, &io->write_io_merged, &io->write_sector);
 }
 
-void get_disk_info(struct disk_desc *disk)
+static void get_disk_info(struct disk_desc *disk)
 {
 	char file_path[1024] = {0};
 	char buff[1024] = {0};
@@ -83,7 +84,8 @@ void get_disk_info(struct disk_desc *disk)
 		     disk->size, disk->model, disk->vendor);
 }
 
-void get_mount_info(struct partition_desc *part, struct list_head *mount_wrap_list)
+static void get_mount_info(struct partition_desc *part,
+			   struct list_head *mount_wrap_list)
 {
 	struct mount_wrap_desc *cur = NULL, *tmp = NULL;
 	list_for_each_entry_safe(cur, tmp, mount_wrap_list, list) {
@@ -95,7 +97,7 @@ void get_mount_info(struct partition_desc *part, struct list_head *mount_wrap_li
 	}
 }
 
-void get_vfs_stat(struct partition_desc *part)
+static void get_vfs_stat(struct partition_desc *part)
 {
 	struct statvfs vfs_stat;
 
@@ -115,7 +117,7 @@ void get_vfs_stat(struct partition_desc *part)
 	part->namemax = vfs_stat.f_namemax;
 }
 
-void get_partition_info(struct partition_desc *part, const char *parent_path,
+static void get_partition_info(struct partition_desc *part, const char *parent_path,
 			struct list_head *mount_wrap_list)
 {
 	char file_path[1024] = {0};
@@ -147,8 +149,8 @@ void get_partition_info(struct partition_desc *part, const char *parent_path,
 	}
 }
 
-void scan_partitions(struct disks *disk_root, struct list_head *mount_wrap_list,
-		     struct disk_desc *cur_disk, struct list_head *tmp_partitions)
+static void scan_partitions(struct disks *disk_root, struct list_head *mount_wrap_list,
+			    struct disk_desc *cur_disk, struct list_head *tmp_partitions)
 {
 	DIR *disk_dir = NULL;
 	struct dirent *dirent = NULL;
@@ -177,7 +179,7 @@ void scan_partitions(struct disks *disk_root, struct list_head *mount_wrap_list,
 
 }
 
-void scan_disks(struct disks *disk_root, struct list_head *mount_wrap_list,
+static void scan_disks(struct disks *disk_root, struct list_head *mount_wrap_list,
 		struct list_head *tmp_disk_list, struct list_head *tmp_partitions)
 {
 	DIR *sys_dir = NULL;
@@ -199,7 +201,7 @@ void scan_disks(struct disks *disk_root, struct list_head *mount_wrap_list,
 	}
 }
 
-struct mount_wrap_desc *get_next_mount_wrapper(struct list_head *mount_wrap_list)
+static struct mount_wrap_desc *get_next_mount_wrapper(struct list_head *mount_wrap_list)
 {
 	struct mount_wrap_desc *ret = NULL;
 	if (list_empty(mount_wrap_list)) {
@@ -216,7 +218,7 @@ struct mount_wrap_desc *get_next_mount_wrapper(struct list_head *mount_wrap_list
 
 
 
-void parse_mount_file(struct list_head *mount_wrap_list)
+static void parse_mount_file(struct list_head *mount_wrap_list)
 {
 
 	FILE *fp;
