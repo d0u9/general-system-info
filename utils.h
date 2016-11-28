@@ -44,9 +44,7 @@ static inline char *first_line(const char *path, char *buff, int len)
 	return ret;
 }
 
-static inline char *first_line_no_nl(const char *path, char *buff, int len)
-{
-	return strip_newline(first_line(path, buff, len), len);
-}
+#define first_line_no_nl(path, buff, len)				\
+	strip_newline(first_line(path, buff, len), len)
 
-#endif
+#endif /* _TRI_UTILS_H */
