@@ -1,5 +1,5 @@
-#ifndef _TRI_MEM
-#define _TRI_MEM
+#ifndef _TRI_MEM_H
+#define _TRI_MEM_H
 
 struct mem_desc {
 	unsigned long total;
@@ -17,4 +17,4 @@ extern struct mem_desc *mem_init(void);
 extern void mem_update(struct mem_desc *mem);
 extern void mem_exit(struct mem_desc *mem);
 
-#endif /* _TRI_MEM */
+#endif /* _TRI_MEM_H */
