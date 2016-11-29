@@ -12,7 +12,7 @@ void mem_update(struct mem_desc *mem)
 
 }
 
-void mem_exit(struct mem_desc mem)
+void mem_exit(struct mem_desc *mem)
 {
 
 }

@@ -13,4 +13,8 @@ struct mem_desc {
 	unsigned long swap_free;
 };
 
+extern struct mem_desc *mem_init(void);
+extern void mem_update(struct mem_desc *mem);
+extern void mem_exit(struct mem_desc *mem);
+
 #endif /* _TRI_MEM */
