@@ -3,8 +3,9 @@
 
 struct mem_desc {
 	unsigned long total;
-	unsigned long used;
+	unsigned long available;
 	unsigned long free;
+	unsigned long used;
 	unsigned long shared;
 	unsigned long buffers;
 	unsigned long cached;
